@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Horizon Gym - Face Scan Login</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    body {
+      background-color: #0f172a;
+      color: #f8fafc;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 16px;
+    }
+
+    .scan-card {
+      background-color: #1e293b;
+      width: 100%;
+      max-width: 380px;
+      padding: 26px 20px;
+      border-radius: 16px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+      border: 1px solid #334155;
+      text-align: center;
+    }
+
+    .brand-header {
+      margin-bottom: 20px;
+    }
+
+    .brand-header h1 {
+      font-size: 21px;
+      font-weight: 700;
+      color: #38bdf8;
+      letter-spacing: 0.5px;
+    }
+
+    .brand-header p {
+      font-size: 13px;
+      color: #94a3b8;
+      margin-top: 4px;
+    }
+
+    .camera-box {
+      position: relative;
+      width: 220px;
+      height: 220px;
+      margin: 0 auto 20px;
+      border-radius: 50%;
+      overflow: hidden;
+      border: 3px solid #38bdf8;
+      background-color: #0f172a;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transform: scaleX(-1);
+    }
+
+    .btn-scan {
+      width: 100%;
+      padding: 12px;
+      background-color: #0284c7;
+      color: #ffffff;
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn-scan:active {
+      background-color: #0369a1;
+    }
+
+    .btn-scan:disabled {
+      background-color: #475569;
+      cursor: not-allowed;
+    }
+
+    .result-box {
+      display: none;
+      margin-top: 18px;
+      padding: 12px;
+      border-radius: 10px;
+      text-align: center;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .result-success {
+      display: block;
+      background-color: rgba(34, 197, 94, 0.15);
+      border: 1px solid #22c55e;
+      color: #4ade80;
+    }
+
+    .result-error {
+      display: block;
+      background-color: rgba(239, 68, 68, 0.15);
+      border: 1px solid #ef4444;
+      color: #f87171;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="scan-card">
+    <div class="brand-header">
+      <h1>FACE SCAN LOGIN</h1>
+      <p>Position your face inside the circle</p>
+    </div>
+
+    <div class="camera-box">
+      <video id="cameraFeed" autoplay playsinline></video>
+      <canvas id="captureCanvas" style="display: none;"></canvas>
+    </div>
+
+    <button type="button" class="btn-scan" id="scanBtn">Scan & Verify Face</button>
+
+    <div id="resultBox" class="result-box"></div>
+  </div>
+
+  <script>
+    const video = document.getElementById('cameraFeed');
+    const canvas = document.getElementById('captureCanvas');
+    const scanBtn = document.getElementById('scanBtn');
+    const resultBox = document.getElementById('resultBox');
+
+    // Yahan apna Face Scan API URL daal dena
+    const API_URL = '';
+
+    // Front Camera chalu karne ke liye
+    async function startCamera() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'user' },
+          audio: false
+        });
+        video.srcObject = stream;
+      } catch (err) {
+        resultBox.textContent = '⚠️ Camera Access Denied or Not Supported';
+        resultBox.className = 'result-box result-error';
+      }
+    }
+
+    startCamera();
+
+    // Scan button dabane par image/code capture karke API ko bhejna
+    scanBtn.addEventListener('click', async function () {
+      scanBtn.textContent = 'Scanning...';
+      scanBtn.disabled = true;
+      resultBox.style.display = 'none';
+
+      // Video frame ko canvas par capture karke Base64 code nikalna
+      canvas.width = video.videoWidth || 300;
+      canvas.height = video.videoHeight || 300;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const faceImageBase64 = canvas.toDataURL('image/jpeg', 0.7);
+
+      try {
+        const response = await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ faceData: faceImageBase64 })
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+          resultBox.textContent = '✅ Face Verified! Login Successful';
+          resultBox.className = 'result-box result-success';
+        } else {
+          resultBox.textContent = '❌ Face Not Matched';
+          resultBox.className = 'result-box result-error';
+        }
+      } catch (error) {
+        resultBox.textContent = '⚠️ Server / API Connection Error';
+        resultBox.className = 'result-box result-error';
+      } finally {
+        scanBtn.textContent = 'Scan & Verify Face';
+        scanBtn.disabled = false;
+      }
+    });
+  </script>
+
+</body>
+  </html>
+  
